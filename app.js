@@ -1,9 +1,11 @@
 (() => {
   "use strict";
 
-  const TOTAL_IMAGES = 38;
+  const TOTAL_IMAGES = 39;
   const EXTERNAL_URL = "https://diecast.ilovefuturemobility.org/";
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const mobileLayout = window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 700;
+  const MOBILE_CARD_RADIUS = 3;
 
   const root = document.querySelector(".experience");
   const deck = document.querySelector(".deck");
@@ -36,9 +38,12 @@
     const foilEffects = ["holographic", "shine", "cross-holographic"];
     const foilEffect = foilEffects[Math.floor(Math.random() * foilEffects.length)];
 
-    image.src = item.src;
+    image.dataset.src = item.src;
+    if (!mobileLayout || orderIndex <= MOBILE_CARD_RADIUS || orderIndex >= TOTAL_IMAGES - MOBILE_CARD_RADIUS) {
+      image.src = item.src;
+    }
     image.alt = `Car model photograph ${item.folderIndex} of ${TOTAL_IMAGES}`;
-    image.loading = orderIndex < 3 ? "eager" : "lazy";
+    image.loading = mobileLayout || orderIndex < 3 ? "eager" : "lazy";
     image.decoding = "async";
     tag.textContent = `[${item.folderIndex}/${TOTAL_IMAGES}]`;
     link.href = EXTERNAL_URL;
@@ -84,9 +89,25 @@
 
   const accentPalette = ["#aebbb0", "#a7bdc3", "#c7b48e", "#b9b1c8", "#c5afa5", "#a9b8a8"];
 
+  const syncMobileImages = (galleryIndex) => {
+    if (!mobileLayout) return;
+
+    cards.forEach((card, index) => {
+      const image = card.querySelector("img");
+      const nearby = Math.abs(wrappedDistance(index, galleryIndex)) <= MOBILE_CARD_RADIUS;
+
+      if (nearby && !image.hasAttribute("src")) {
+        image.src = image.dataset.src;
+      } else if (!nearby && image.hasAttribute("src")) {
+        image.removeAttribute("src");
+      }
+    });
+  };
+
   const setAmbient = (galleryIndex) => {
     if (galleryIndex === state.currentIndex) return;
     state.currentIndex = galleryIndex;
+    syncMobileImages(galleryIndex);
     state.ambientLayer = 1 - state.ambientLayer;
     const incoming = ambientLayers[state.ambientLayer];
     const outgoing = ambientLayers[1 - state.ambientLayer];
@@ -128,6 +149,17 @@
 
     cards.forEach((card, index) => {
       const distance = wrappedDistance(index, state.position);
+      if (mobileLayout) {
+        if (Math.abs(distance) > MOBILE_CARD_RADIUS) {
+          card.style.visibility = "hidden";
+          card.style.pointerEvents = "none";
+          card.classList.remove("is-current");
+          card.setAttribute("aria-hidden", "true");
+          return;
+        }
+
+        card.style.visibility = "visible";
+      }
       const layout = getLayout(distance);
       const isCurrent = index === selected && Math.abs(distance) < 0.55;
       const interactive = Math.abs(distance) < 0.56;
@@ -174,7 +206,15 @@
       }
     }
 
-    render();
+    const needsRender =
+      !mobileLayout ||
+      state.dragging ||
+      Math.abs(state.target - state.position) > 0.0005 ||
+      Math.abs(state.velocity) > 0.0005 ||
+      Math.abs(state.targetTiltX - state.tiltX) > 0.001 ||
+      Math.abs(state.targetTiltY - state.tiltY) > 0.001;
+
+    if (needsRender) render();
     requestAnimationFrame(animate);
   };
 
@@ -287,22 +327,17 @@
     state.targetTiltY = Math.max(-2.5, Math.min(2.5, event.gamma / 18));
   };
 
-  const enableOrientation = async () => {
+  const getOrientationEvent = () => {
     try {
-      if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
-        const permission = await DeviceOrientationEvent.requestPermission();
-        if (permission !== "granted") return;
-      }
-      window.addEventListener("deviceorientation", handleOrientation, { passive: true });
+      return window.DeviceOrientationEvent;
     } catch {
-      // Motion access is optional; touch interaction remains fully available.
+      return null;
     }
   };
 
-  if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission !== "function") {
+  const orientationEvent = getOrientationEvent();
+  if (orientationEvent && typeof orientationEvent.requestPermission !== "function") {
     window.addEventListener("deviceorientation", handleOrientation, { passive: true });
-  } else {
-    root.addEventListener("pointerup", enableOrientation, { once: true });
   }
 
   setAmbient(0);

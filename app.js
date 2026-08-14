@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const TOTAL_IMAGES = 39;
+  const TOTAL_IMAGES = 40;
   const EXTERNAL_URL = "https://diecast.ilovefuturemobility.org/";
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const mobileLayout = window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 700;

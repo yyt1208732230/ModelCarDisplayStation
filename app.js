@@ -1,11 +1,11 @@
-(() => {
+(async () => {
   "use strict";
 
-  const TOTAL_IMAGES = 40;
+  const DEFAULT_IMAGE_COUNT = 40;
+  const MAX_IMAGE_COUNT = 1000;
+  const CARD_CACHE_RADIUS = 3;
   const EXTERNAL_URL = "https://diecast.ilovefuturemobility.org/";
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const mobileLayout = window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 700;
-  const MOBILE_CARD_RADIUS = 3;
 
   const root = document.querySelector(".experience");
   const deck = document.querySelector(".deck");
@@ -14,9 +14,83 @@
   const previousZone = document.querySelector(".nav-zone--previous");
   const nextZone = document.querySelector(".nav-zone--next");
 
-  const sourceImages = Array.from({ length: TOTAL_IMAGES }, (_, index) => ({
-    folderIndex: index + 1,
-    src: `./cards/model-car-${index + 1}.webp`,
+  const imagePath = (index) => `./cards/model-car-${index}.webp`;
+
+  const getDirectoryImageIndexes = async () => {
+    try {
+      const response = await fetch("./cards/", { cache: "no-store" });
+      if (!response.ok) return [];
+
+      const directoryHtml = await response.text();
+      return [...new Set(
+        [...directoryHtml.matchAll(/model-car-(\d+)\.webp/gi)]
+          .map((match) => Number(match[1]))
+          .filter((index) => Number.isInteger(index) && index > 0),
+      )].sort((a, b) => a - b);
+    } catch {
+      return [];
+    }
+  };
+
+  const imageExists = async (index) => {
+    try {
+      let response = await fetch(imagePath(index), { method: "HEAD", cache: "no-store" });
+      if (response.status === 405) {
+        response = await fetch(imagePath(index), {
+          cache: "no-store",
+          headers: { Range: "bytes=0-0" },
+        });
+      }
+      return response.ok;
+    } catch {
+      return false;
+    }
+  };
+
+  const getSequentialImageCount = async () => {
+    if (!(await imageExists(1))) return 0;
+
+    let lowerBound = 1;
+    let upperBound = DEFAULT_IMAGE_COUNT;
+
+    if (await imageExists(DEFAULT_IMAGE_COUNT)) {
+      lowerBound = DEFAULT_IMAGE_COUNT;
+      upperBound = DEFAULT_IMAGE_COUNT + 1;
+
+      while (upperBound < MAX_IMAGE_COUNT && await imageExists(upperBound)) {
+        lowerBound = upperBound;
+        upperBound = Math.min(upperBound * 2, MAX_IMAGE_COUNT);
+      }
+
+      if (upperBound === MAX_IMAGE_COUNT && await imageExists(upperBound)) return upperBound;
+    }
+
+    while (upperBound - lowerBound > 1) {
+      const middle = Math.floor((lowerBound + upperBound) / 2);
+      if (await imageExists(middle)) {
+        lowerBound = middle;
+      } else {
+        upperBound = middle;
+      }
+    }
+
+    return lowerBound;
+  };
+
+  const discoverImageIndexes = async () => {
+    const directoryIndexes = await getDirectoryImageIndexes();
+    if (directoryIndexes.length) return directoryIndexes;
+
+    const imageCount = await getSequentialImageCount();
+    const resolvedCount = imageCount || DEFAULT_IMAGE_COUNT;
+    return Array.from({ length: resolvedCount }, (_, index) => index + 1);
+  };
+
+  const imageIndexes = await discoverImageIndexes();
+  const totalImages = imageIndexes.length;
+  const sourceImages = imageIndexes.map((folderIndex) => ({
+    folderIndex,
+    src: imagePath(folderIndex),
   }));
 
   const shuffle = (items) => {
@@ -39,13 +113,13 @@
     const foilEffect = foilEffects[Math.floor(Math.random() * foilEffects.length)];
 
     image.dataset.src = item.src;
-    if (!mobileLayout || orderIndex <= MOBILE_CARD_RADIUS || orderIndex >= TOTAL_IMAGES - MOBILE_CARD_RADIUS) {
+    if (orderIndex <= CARD_CACHE_RADIUS || orderIndex >= totalImages - CARD_CACHE_RADIUS) {
       image.src = item.src;
     }
-    image.alt = `Car model photograph ${item.folderIndex} of ${TOTAL_IMAGES}`;
-    image.loading = mobileLayout || orderIndex < 3 ? "eager" : "lazy";
+    image.alt = `Car model photograph ${item.folderIndex} of ${totalImages}`;
+    image.loading = "eager";
     image.decoding = "async";
-    tag.textContent = `${item.folderIndex}/${TOTAL_IMAGES}`;
+    tag.textContent = `${item.folderIndex}/${totalImages}`;
     link.href = EXTERNAL_URL;
     foil.classList.add(`card__foil--${foilEffect}`);
     foil.style.animationDelay = `${-(Math.random() * 8).toFixed(2)}s`;
@@ -81,20 +155,18 @@
   const mod = (value, divisor) => ((value % divisor) + divisor) % divisor;
 
   const wrappedDistance = (index, position) => {
-    let distance = index - mod(position, TOTAL_IMAGES);
-    if (distance > TOTAL_IMAGES / 2) distance -= TOTAL_IMAGES;
-    if (distance < -TOTAL_IMAGES / 2) distance += TOTAL_IMAGES;
+    let distance = index - mod(position, totalImages);
+    if (distance > totalImages / 2) distance -= totalImages;
+    if (distance < -totalImages / 2) distance += totalImages;
     return distance;
   };
 
   const accentPalette = ["#aebbb0", "#a7bdc3", "#c7b48e", "#b9b1c8", "#c5afa5", "#a9b8a8"];
 
-  const syncMobileImages = (galleryIndex) => {
-    if (!mobileLayout) return;
-
+  const syncCachedImages = (galleryIndex) => {
     cards.forEach((card, index) => {
       const image = card.querySelector("img");
-      const nearby = Math.abs(wrappedDistance(index, galleryIndex)) <= MOBILE_CARD_RADIUS;
+      const nearby = Math.abs(wrappedDistance(index, galleryIndex)) <= CARD_CACHE_RADIUS;
 
       if (nearby && !image.hasAttribute("src")) {
         image.src = image.dataset.src;
@@ -107,7 +179,7 @@
   const setAmbient = (galleryIndex) => {
     if (galleryIndex === state.currentIndex) return;
     state.currentIndex = galleryIndex;
-    syncMobileImages(galleryIndex);
+    syncCachedImages(galleryIndex);
     state.ambientLayer = 1 - state.ambientLayer;
     const incoming = ambientLayers[state.ambientLayer];
     const outgoing = ambientLayers[1 - state.ambientLayer];
@@ -141,7 +213,7 @@
   };
 
   const render = () => {
-    const selected = mod(Math.round(state.position), TOTAL_IMAGES);
+    const selected = mod(Math.round(state.position), totalImages);
     setAmbient(selected);
 
     state.tiltX += (state.targetTiltX - state.tiltX) * 0.065;
@@ -149,17 +221,15 @@
 
     cards.forEach((card, index) => {
       const distance = wrappedDistance(index, state.position);
-      if (mobileLayout) {
-        if (Math.abs(distance) > MOBILE_CARD_RADIUS) {
-          card.style.visibility = "hidden";
-          card.style.pointerEvents = "none";
-          card.classList.remove("is-current");
-          card.setAttribute("aria-hidden", "true");
-          return;
-        }
-
-        card.style.visibility = "visible";
+      if (Math.abs(distance) > CARD_CACHE_RADIUS) {
+        card.style.visibility = "hidden";
+        card.style.pointerEvents = "none";
+        card.classList.remove("is-current");
+        card.setAttribute("aria-hidden", "true");
+        return;
       }
+
+      card.style.visibility = "visible";
       const layout = getLayout(distance);
       const isCurrent = index === selected && Math.abs(distance) < 0.55;
       const interactive = Math.abs(distance) < 0.56;
@@ -207,7 +277,6 @@
     }
 
     const needsRender =
-      !mobileLayout ||
       state.dragging ||
       Math.abs(state.target - state.position) > 0.0005 ||
       Math.abs(state.velocity) > 0.0005 ||

@@ -45,7 +45,7 @@
     image.alt = `Car model photograph ${item.folderIndex} of ${TOTAL_IMAGES}`;
     image.loading = mobileLayout || orderIndex < 3 ? "eager" : "lazy";
     image.decoding = "async";
-    tag.textContent = `[${item.folderIndex}/${TOTAL_IMAGES}]`;
+    tag.textContent = `${item.folderIndex}/${TOTAL_IMAGES}`;
     link.href = EXTERNAL_URL;
     foil.classList.add(`card__foil--${foilEffect}`);
     foil.style.animationDelay = `${-(Math.random() * 8).toFixed(2)}s`;

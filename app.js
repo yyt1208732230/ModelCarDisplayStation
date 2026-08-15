@@ -16,7 +16,7 @@
 
   const sourceImages = Array.from({ length: TOTAL_IMAGES }, (_, index) => ({
     folderIndex: index + 1,
-    src: `./cards/model-car-${index + 1}.jpg`,
+    src: `./cards/model-car-${index + 1}.webp`,
   }));
 
   const shuffle = (items) => {

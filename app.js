@@ -1,8 +1,8 @@
 (async () => {
   "use strict";
 
-  const DEFAULT_IMAGE_COUNT = 40;
-  const MAX_IMAGE_COUNT = 1000;
+  const DEFAULT_IMAGE_COUNT = 146;
+  const MAX_IMAGE_COUNT = 500;
   const CARD_CACHE_RADIUS = 3;
   const EXTERNAL_URL = "https://diecast.ilovefuturemobility.org/";
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

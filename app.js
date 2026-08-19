@@ -1,9 +1,11 @@
-(async () => {
+(() => {
   "use strict";
 
-  const DEFAULT_IMAGE_COUNT = 146;
-  const MAX_IMAGE_COUNT = 500;
+  // Update this one value whenever the numbered images in /cards change.
+  const IMAGE_COUNT = 164;
   const CARD_CACHE_RADIUS = 3;
+  const DIAL_TO_CARD_DELAY = 190;
+  const CARD_TO_DIAL_DELAY = 120;
   const EXTERNAL_URL = "https://diecast.ilovefuturemobility.org/";
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -13,118 +15,44 @@
   const ambientLayers = [...document.querySelectorAll(".ambient")];
   const previousZone = document.querySelector(".nav-zone--previous");
   const nextZone = document.querySelector(".nav-zone--next");
+  const indexControl = document.querySelector(".card-index-control");
+  const indexDial = document.querySelector(".card-index-control__dial");
+  const dialDisplay = document.querySelector(".card-index-control__number");
+  const dialTotal = document.querySelector(".card-index-control__total");
+  const dialPrevious = document.querySelector(".card-index-control__step--previous");
+  const dialNext = document.querySelector(".card-index-control__step--next");
 
   const imagePath = (index) => `./cards/model-car-${index}.webp`;
-
-  const getDirectoryImageIndexes = async () => {
-    try {
-      const response = await fetch("./cards/", { cache: "no-store" });
-      if (!response.ok) return [];
-
-      const directoryHtml = await response.text();
-      return [...new Set(
-        [...directoryHtml.matchAll(/model-car-(\d+)\.webp/gi)]
-          .map((match) => Number(match[1]))
-          .filter((index) => Number.isInteger(index) && index > 0),
-      )].sort((a, b) => a - b);
-    } catch {
-      return [];
-    }
-  };
-
-  const imageExists = async (index) => {
-    try {
-      let response = await fetch(imagePath(index), { method: "HEAD", cache: "no-store" });
-      if (response.status === 405) {
-        response = await fetch(imagePath(index), {
-          cache: "no-store",
-          headers: { Range: "bytes=0-0" },
-        });
-      }
-      return response.ok;
-    } catch {
-      return false;
-    }
-  };
-
-  const getSequentialImageCount = async () => {
-    if (!(await imageExists(1))) return 0;
-
-    let lowerBound = 1;
-    let upperBound = DEFAULT_IMAGE_COUNT;
-
-    if (await imageExists(DEFAULT_IMAGE_COUNT)) {
-      lowerBound = DEFAULT_IMAGE_COUNT;
-      upperBound = DEFAULT_IMAGE_COUNT + 1;
-
-      while (upperBound < MAX_IMAGE_COUNT && await imageExists(upperBound)) {
-        lowerBound = upperBound;
-        upperBound = Math.min(upperBound * 2, MAX_IMAGE_COUNT);
-      }
-
-      if (upperBound === MAX_IMAGE_COUNT && await imageExists(upperBound)) return upperBound;
-    }
-
-    while (upperBound - lowerBound > 1) {
-      const middle = Math.floor((lowerBound + upperBound) / 2);
-      if (await imageExists(middle)) {
-        lowerBound = middle;
-      } else {
-        upperBound = middle;
-      }
-    }
-
-    return lowerBound;
-  };
-
-  const discoverImageIndexes = async () => {
-    const directoryIndexes = await getDirectoryImageIndexes();
-    if (directoryIndexes.length) return directoryIndexes;
-
-    const imageCount = await getSequentialImageCount();
-    const resolvedCount = imageCount || DEFAULT_IMAGE_COUNT;
-    return Array.from({ length: resolvedCount }, (_, index) => index + 1);
-  };
-
-  const imageIndexes = await discoverImageIndexes();
-  const totalImages = imageIndexes.length;
-  const sourceImages = imageIndexes.map((folderIndex) => ({
-    folderIndex,
-    src: imagePath(folderIndex),
+  const totalImages = IMAGE_COUNT;
+  const gallery = Array.from({ length: totalImages }, (_, index) => ({
+    folderIndex: index + 1,
+    src: imagePath(index + 1),
   }));
+  const initialIndex = Math.floor(Math.random() * totalImages);
 
-  const shuffle = (items) => {
-    const shuffled = [...items];
-    for (let i = shuffled.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  };
-
-  const gallery = shuffle(sourceImages);
   const cards = gallery.map((item, orderIndex) => {
+    const foilEffects = ["holographic", "shine", "cross-holographic"];
+    const foilEffect = foilEffects[orderIndex % foilEffects.length];
+    const foilSeed = orderIndex + 1;
+    const foilX = (foilSeed * 37) % 101;
+    const foilY = (foilSeed * 61) % 101;
+
     const card = template.content.firstElementChild.cloneNode(true);
     const image = card.querySelector("img");
     const tag = card.querySelector(".card__tag");
     const link = card.querySelector(".card__link");
     const foil = card.querySelector(".card__foil");
-    const foilEffects = ["holographic", "shine", "cross-holographic"];
-    const foilEffect = foilEffects[Math.floor(Math.random() * foilEffects.length)];
 
     image.dataset.src = item.src;
-    if (orderIndex <= CARD_CACHE_RADIUS || orderIndex >= totalImages - CARD_CACHE_RADIUS) {
-      image.src = item.src;
-    }
     image.alt = `Car model photograph ${item.folderIndex} of ${totalImages}`;
     image.loading = "eager";
     image.decoding = "async";
     tag.textContent = `${item.folderIndex}/${totalImages}`;
     link.href = EXTERNAL_URL;
     foil.classList.add(`card__foil--${foilEffect}`);
-    foil.style.animationDelay = `${-(Math.random() * 8).toFixed(2)}s`;
-    card.style.setProperty("--foil-x", `${Math.round(Math.random() * 100)}%`);
-    card.style.setProperty("--foil-y", `${Math.round(Math.random() * 100)}%`);
+    foil.style.animationDelay = `${-((foilSeed * 1.37) % 8).toFixed(2)}s`;
+    card.style.setProperty("--foil-x", `${foilX}%`);
+    card.style.setProperty("--foil-y", `${foilY}%`);
     card.dataset.foil = foilEffect;
     card.dataset.order = String(orderIndex);
     card.dataset.folderIndex = String(item.folderIndex);
@@ -133,15 +61,15 @@
   });
 
   const state = {
-    position: 0,
-    target: 0,
+    position: initialIndex,
+    target: initialIndex,
     velocity: 0,
     dragging: false,
     pointerId: null,
     pointerStartY: 0,
     pointerLastY: 0,
     pointerLastTime: 0,
-    dragStartPosition: 0,
+    dragStartPosition: initialIndex,
     moved: false,
     currentIndex: -1,
     ambientLayer: 0,
@@ -150,6 +78,18 @@
     targetTiltX: 0,
     targetTiltY: 0,
     lastFrame: performance.now(),
+  };
+
+  const dialState = {
+    value: initialIndex,
+    pendingTarget: null,
+    cardTimer: null,
+    displayTimer: null,
+    dragging: false,
+    pointerId: null,
+    pointerStartY: 0,
+    dragStartValue: initialIndex,
+    lastWheelTime: 0,
   };
 
   const mod = (value, divisor) => ((value % divisor) + divisor) % divisor;
@@ -178,6 +118,7 @@
 
   const setAmbient = (galleryIndex) => {
     if (galleryIndex === state.currentIndex) return;
+    const previousIndex = state.currentIndex;
     state.currentIndex = galleryIndex;
     syncCachedImages(galleryIndex);
     state.ambientLayer = 1 - state.ambientLayer;
@@ -186,6 +127,12 @@
     incoming.style.setProperty("--ambient-image", `url("${gallery[galleryIndex].src}")`);
     incoming.classList.add("is-visible");
     outgoing.classList.remove("is-visible");
+
+    if (dialState.pendingTarget === galleryIndex) {
+      dialState.pendingTarget = null;
+    } else if (dialState.pendingTarget === null && previousIndex >= 0) {
+      queueDialSync(galleryIndex, wrappedDistance(galleryIndex, previousIndex) >= 0 ? 1 : -1);
+    }
   };
 
   const getLayout = (distance) => {
@@ -298,13 +245,96 @@
     }
   };
 
+  const cancelPendingDialJump = () => {
+    window.clearTimeout(dialState.cardTimer);
+    dialState.cardTimer = null;
+    dialState.pendingTarget = null;
+  };
+
+  const renderDialValue = (nextValue, direction = 1, immediate = false) => {
+    const normalizedValue = mod(nextValue, totalImages);
+    const displayValue = String(normalizedValue + 1).padStart(3, "0");
+    dialState.value = normalizedValue;
+    indexDial.setAttribute("aria-valuenow", String(normalizedValue + 1));
+    indexDial.setAttribute("aria-valuetext", `Card ${normalizedValue + 1} of ${totalImages}`);
+
+    const currentNumber = dialDisplay.querySelector(".dial-number.is-current");
+    if (immediate || prefersReducedMotion || !currentNumber) {
+      const number = document.createElement("span");
+      number.className = "dial-number is-current";
+      number.textContent = displayValue;
+      dialDisplay.replaceChildren(number);
+      return;
+    }
+
+    [...dialDisplay.querySelectorAll(".dial-number:not(.is-current)")].forEach((number) => number.remove());
+    if (currentNumber.textContent === displayValue) return;
+
+    const incoming = document.createElement("span");
+    const movement = direction >= 0 ? "up" : "down";
+    incoming.className = `dial-number is-entering-${movement}`;
+    incoming.textContent = displayValue;
+    dialDisplay.appendChild(incoming);
+    void incoming.offsetHeight;
+    currentNumber.classList.remove("is-current");
+    currentNumber.classList.add(`is-exiting-${movement}`);
+    incoming.classList.add("is-current");
+
+    window.setTimeout(() => {
+      currentNumber.remove();
+      incoming.classList.remove(`is-entering-${movement}`);
+    }, 430);
+  };
+
+  const queueDialSync = (galleryIndex, direction) => {
+    window.clearTimeout(dialState.displayTimer);
+    dialState.displayTimer = window.setTimeout(() => {
+      renderDialValue(galleryIndex, direction);
+    }, CARD_TO_DIAL_DELAY);
+  };
+
+  const goToGalleryIndex = (galleryIndex) => {
+    const nearestCycle = Math.round((state.target - galleryIndex) / totalImages);
+    const destination = galleryIndex + nearestCycle * totalImages;
+    const distance = destination - state.target;
+
+    // A distant dial jump only stages the final neighbouring card instead of
+    // racing through (and loading) every image between the two positions.
+    if (!prefersReducedMotion && Math.abs(distance) > 2) {
+      state.position = destination - Math.sign(distance) * 0.82;
+      state.velocity = 0;
+      render();
+    }
+
+    goTo(destination);
+  };
+
+  const selectDialValue = (nextValue, direction) => {
+    const normalizedValue = mod(nextValue, totalImages);
+    markInteraction();
+    window.clearTimeout(dialState.displayTimer);
+    dialState.pendingTarget = normalizedValue;
+    renderDialValue(normalizedValue, direction);
+    window.clearTimeout(dialState.cardTimer);
+    dialState.cardTimer = window.setTimeout(() => {
+      dialState.cardTimer = null;
+      goToGalleryIndex(normalizedValue);
+    }, DIAL_TO_CARD_DELAY);
+  };
+
+  const nudgeDial = (direction) => {
+    selectDialValue(dialState.value + direction, direction);
+  };
+
   const step = (direction) => {
+    cancelPendingDialJump();
     const base = Math.round(state.target);
     goTo(base + direction);
   };
 
   root.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0 || event.target.closest("a, .nav-zone")) return;
+    if (event.button !== 0 || event.target.closest("a, .nav-zone, .card-index-control")) return;
+    cancelPendingDialJump();
     state.dragging = true;
     state.pointerId = event.pointerId;
     state.pointerStartY = event.clientY;
@@ -379,6 +409,84 @@
     step(1);
   });
 
+  indexControl.addEventListener("pointerdown", (event) => event.stopPropagation());
+
+  dialPrevious.addEventListener("click", (event) => {
+    event.stopPropagation();
+    nudgeDial(-1);
+  });
+
+  dialNext.addEventListener("click", (event) => {
+    event.stopPropagation();
+    nudgeDial(1);
+  });
+
+  indexDial.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const now = performance.now();
+    if (Math.abs(event.deltaY) < 1 || now - dialState.lastWheelTime < 70) return;
+    dialState.lastWheelTime = now;
+    nudgeDial(event.deltaY >= 0 ? 1 : -1);
+  }, { passive: false });
+
+  indexDial.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    dialState.dragging = true;
+    dialState.pointerId = event.pointerId;
+    dialState.pointerStartY = event.clientY;
+    dialState.dragStartValue = dialState.value;
+    indexDial.classList.add("is-dragging");
+    indexDial.setPointerCapture?.(event.pointerId);
+  });
+
+  indexDial.addEventListener("pointermove", (event) => {
+    if (!dialState.dragging || event.pointerId !== dialState.pointerId) return;
+    event.preventDefault();
+    const steps = Math.round((dialState.pointerStartY - event.clientY) / 24);
+    const nextValue = mod(dialState.dragStartValue + steps, totalImages);
+    if (nextValue === dialState.value) return;
+    const direction = wrappedDistance(nextValue, dialState.value) >= 0 ? 1 : -1;
+    selectDialValue(nextValue, direction);
+  });
+
+  const finishDialPointer = (event) => {
+    if (!dialState.dragging || event.pointerId !== dialState.pointerId) return;
+    dialState.dragging = false;
+    dialState.pointerId = null;
+    indexDial.classList.remove("is-dragging");
+    indexDial.releasePointerCapture?.(event.pointerId);
+  };
+
+  indexDial.addEventListener("pointerup", finishDialPointer);
+  indexDial.addEventListener("pointercancel", finishDialPointer);
+
+  indexDial.addEventListener("keydown", (event) => {
+    const keyDirections = {
+      ArrowUp: -1,
+      ArrowLeft: -1,
+      ArrowDown: 1,
+      ArrowRight: 1,
+      PageUp: -10,
+      PageDown: 10,
+    };
+
+    if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      event.stopPropagation();
+      const nextValue = event.key === "Home" ? 0 : totalImages - 1;
+      selectDialValue(nextValue, nextValue >= dialState.value ? 1 : -1);
+      return;
+    }
+
+    const direction = keyDirections[event.key];
+    if (direction == null) return;
+    event.preventDefault();
+    event.stopPropagation();
+    selectDialValue(dialState.value + direction, Math.sign(direction));
+  });
+
   document.addEventListener("keydown", (event) => {
     if (["ArrowDown", "PageDown", " "].includes(event.key)) {
       event.preventDefault();
@@ -409,7 +517,10 @@
     window.addEventListener("deviceorientation", handleOrientation, { passive: true });
   }
 
-  setAmbient(0);
+  indexDial.setAttribute("aria-valuemax", String(totalImages));
+  dialTotal.textContent = `/ ${totalImages}`;
+  renderDialValue(initialIndex, 1, true);
+  setAmbient(initialIndex);
   render();
   requestAnimationFrame(animate);
 })();

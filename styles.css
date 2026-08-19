@@ -430,6 +430,210 @@ a {
   height: 50%;
 }
 
+.card-index-control {
+  position: absolute;
+  z-index: 26;
+  top: 50%;
+  left: calc(50% + var(--card-width) / 2 + clamp(28px, 5vw, 76px));
+  display: grid;
+  width: 104px;
+  grid-template-rows: auto 30px 84px 30px auto;
+  place-items: center;
+  overflow: hidden;
+  padding: 12px 10px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 76% 5%, rgba(118, 129, 132, 0.2), transparent 34%),
+    linear-gradient(155deg, rgba(27, 29, 33, 0.97), rgba(13, 14, 16, 0.96));
+  box-shadow:
+    0 26px 48px rgba(25, 27, 31, 0.2),
+    0 8px 18px rgba(25, 27, 31, 0.13),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  color: rgba(242, 243, 241, 0.94);
+  cursor: default;
+  transform: translateY(-50%);
+}
+
+.card-index-control::after {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(118deg, rgba(255, 255, 255, 0.055), transparent 28%, transparent 72%, rgba(255, 255, 255, 0.018));
+  content: "";
+  pointer-events: none;
+}
+
+.card-index-control__label,
+.card-index-control__hint {
+  z-index: 1;
+  margin: 0;
+  color: rgba(225, 226, 223, 0.42);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.card-index-control__label {
+  padding-bottom: 3px;
+}
+
+.card-index-control__hint {
+  padding-top: 5px;
+  font-size: 7px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.card-index-control__step {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: 34px;
+  height: 28px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(237, 239, 237, 0.54);
+  cursor: pointer;
+  transition: color 220ms ease, background 220ms ease, transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.card-index-control__step span {
+  width: 7px;
+  height: 7px;
+  border-top: 1px solid currentColor;
+  border-left: 1px solid currentColor;
+}
+
+.card-index-control__step--previous span {
+  transform: translateY(2px) rotate(45deg);
+}
+
+.card-index-control__step--next span {
+  transform: translateY(-2px) rotate(225deg);
+}
+
+.card-index-control__step:hover,
+.card-index-control__step:focus-visible {
+  background: rgba(255, 255, 255, 0.065);
+  color: rgba(255, 255, 255, 0.95);
+  outline: none;
+  transform: scale(1.08);
+}
+
+.card-index-control__dial {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: 82px;
+  height: 78px;
+  grid-template-rows: 49px auto;
+  place-items: center;
+  overflow: hidden;
+  padding: 8px 8px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 17px;
+  background: rgba(5, 6, 7, 0.52);
+  box-shadow:
+    inset 0 1px 8px rgba(0, 0, 0, 0.48),
+    0 1px 0 rgba(255, 255, 255, 0.04);
+  cursor: ns-resize;
+  outline: none;
+  touch-action: none;
+}
+
+.card-index-control__dial::before,
+.card-index-control__dial::after {
+  position: absolute;
+  z-index: 3;
+  right: 8px;
+  left: 8px;
+  height: 13px;
+  content: "";
+  pointer-events: none;
+}
+
+.card-index-control__dial::before {
+  top: 0;
+  background: linear-gradient(rgba(7, 8, 9, 0.86), transparent);
+}
+
+.card-index-control__dial::after {
+  bottom: 18px;
+  background: linear-gradient(transparent, rgba(7, 8, 9, 0.82));
+}
+
+.card-index-control__dial:hover,
+.card-index-control__dial:focus-visible,
+.card-index-control__dial.is-dragging {
+  border-color: rgba(199, 210, 205, 0.32);
+  box-shadow:
+    inset 0 1px 8px rgba(0, 0, 0, 0.5),
+    0 0 0 3px rgba(174, 187, 176, 0.08);
+}
+
+.card-index-control__number {
+  position: relative;
+  width: 100%;
+  height: 45px;
+  overflow: hidden;
+  font-size: 27px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  line-height: 45px;
+  text-align: center;
+}
+
+.dial-number {
+  position: absolute;
+  inset: 0 -0.06em 0 0;
+  opacity: 0;
+  text-shadow: 0 0 16px rgba(213, 231, 222, 0.14);
+  transform: translateY(0);
+  transition:
+    transform 400ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 300ms ease;
+  will-change: transform, opacity;
+}
+
+.dial-number.is-entering-up {
+  transform: translateY(115%);
+}
+
+.dial-number.is-entering-down {
+  transform: translateY(-115%);
+}
+
+.dial-number.is-current {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.dial-number.is-exiting-up {
+  opacity: 0;
+  transform: translateY(-115%);
+}
+
+.dial-number.is-exiting-down {
+  opacity: 0;
+  transform: translateY(115%);
+}
+
+.card-index-control__total {
+  align-self: end;
+  color: rgba(225, 226, 223, 0.38);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+}
+
 .gesture-hint {
   position: absolute;
   z-index: 25;
@@ -487,8 +691,59 @@ noscript {
   }
 
   .gesture-hint {
-    right: 50%;
-    transform: translateX(50%);
+    display: none;
+  }
+
+  .card-index-control {
+    top: auto;
+    bottom: max(18px, env(safe-area-inset-bottom));
+    left: 50%;
+    width: auto;
+    height: 64px;
+    grid-template-columns: 32px 82px 32px;
+    grid-template-rows: 1fr;
+    padding: 7px 8px;
+    border-radius: 22px;
+    transform: translateX(-50%);
+  }
+
+  .card-index-control__label,
+  .card-index-control__hint {
+    display: none;
+  }
+
+  .card-index-control__step--previous span {
+    transform: translateX(2px) rotate(-45deg);
+  }
+
+  .card-index-control__step--next span {
+    transform: translateX(-2px) rotate(135deg);
+  }
+
+  .card-index-control__dial {
+    width: 78px;
+    height: 50px;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: 1fr;
+    padding: 4px 7px;
+    border-radius: 15px;
+  }
+
+  .card-index-control__number {
+    height: 40px;
+    font-size: 24px;
+    line-height: 40px;
+  }
+
+  .card-index-control__total {
+    align-self: center;
+    margin-left: 2px;
+    font-size: 7px;
+    writing-mode: vertical-rl;
+  }
+
+  .card-index-control__dial::after {
+    bottom: 0;
   }
 }
 
@@ -505,6 +760,7 @@ noscript {
   .card__foil::before,
   .card__foil::after,
   .card__link,
+  .dial-number,
   .gesture-hint {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;

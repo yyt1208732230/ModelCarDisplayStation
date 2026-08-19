@@ -22,6 +22,32 @@
       <button class="nav-zone nav-zone--previous" type="button" aria-label="Previous car model"></button>
       <button class="nav-zone nav-zone--next" type="button" aria-label="Next car model"></button>
 
+      <aside class="card-index-control" aria-label="Jump to a car model">
+        <p class="card-index-control__label">Card</p>
+        <button class="card-index-control__step card-index-control__step--previous" type="button" aria-label="Previous card">
+          <span aria-hidden="true"></span>
+        </button>
+        <div
+          class="card-index-control__dial"
+          role="slider"
+          tabindex="0"
+          aria-label="Card number"
+          aria-valuemin="1"
+          aria-valuemax="1"
+          aria-valuenow="1"
+          aria-valuetext="Card 1"
+        >
+          <div class="card-index-control__number" aria-hidden="true">
+            <span class="dial-number is-current">001</span>
+          </div>
+          <span class="card-index-control__total" aria-hidden="true">/ —</span>
+        </div>
+        <button class="card-index-control__step card-index-control__step--next" type="button" aria-label="Next card">
+          <span aria-hidden="true"></span>
+        </button>
+        <p class="card-index-control__hint">Drag · scroll</p>
+      </aside>
+
       <p class="gesture-hint" aria-hidden="true">
         <span></span>
         Click or swipe

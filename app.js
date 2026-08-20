@@ -2,7 +2,7 @@
   "use strict";
 
   // Update this one value whenever the numbered images in /cards change.
-  const IMAGE_COUNT = 164;
+  const IMAGE_COUNT = 245;
   const CARD_CACHE_RADIUS = 3;
   const DIAL_TO_CARD_DELAY = 190;
   const CARD_TO_DIAL_DELAY = 120;
